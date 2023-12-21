@@ -1,0 +1,10 @@
+package zero
+
+modules = Main
+main = Main
+
+depends = contrib
+
+executable = zero
+
+sourcedir = "src"
