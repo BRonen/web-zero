@@ -10,5 +10,5 @@ executable = zero
 
 sourcedir = "src"
 
-prebuild = "make -C src && cp src/*.so build/exec/zero_app"
+postbuild = "make -C src"
 postclean = "make -C src clean"
