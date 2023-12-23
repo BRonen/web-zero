@@ -1,5 +1,5 @@
-SRCS = ./c_utils.c
-OBJS = $(SRCS:.c=.so)
+SRCS = ./zero.h
+OBJS = $(SRCS:.h=.so)
 
 build:
 	gcc --shared $(SRCS) -o $(OBJS)

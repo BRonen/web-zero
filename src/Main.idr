@@ -4,28 +4,49 @@ import Network.Socket
 import Network.Socket.Data
 
 namespace Sqlite
-  data SqlitePtr = AnyPtr
+  %foreign "C:allocVoidPtr,zero"
+  allocVoidPtr : () -> PrimIO (Ptr AnyPtr)
 
-  %foreign "C:allocVoidPtr,c_utils.h"
-  allocVoidPtr : () -> PrimIO (Ptr SqlitePtr)
+  %foreign "C:allocVoidPtr,zero"
+  allocStringPtr : () -> PrimIO (Ptr String)
 
-  %foreign "C:free,libc"
-  free : SqlitePtr -> PrimIO ()
+  %foreign "C:deref,zero"
+  deref : Ptr AnyPtr -> PrimIO AnyPtr
 
-  %foreign "C:sqlite3_open, sqlite3"
-  sqlite3_open : (filename: String) -> (sqlite3: Ptr SqlitePtr) -> Int
+  %foreign "C:free,libc,stdlib.h"
+  free : AnyPtr -> PrimIO ()
 
-  %foreign "C:sqlite3_close, sqlite3"
-  sqlite3_close : (sqlite3: SqlitePtr) -> Int
+  %foreign "C:sqlite3_open,sqlite3,sqlite3.h"
+  sqlite3_open : (filename: String) -> (sqlite3: Ptr AnyPtr) -> PrimIO Int
 
-  %foreign "C:sqlite3_exec, sqlite3"
-  sqlite3_exec : (sqlite3: SqlitePtr) -> (sql: String) -> (callback: AnyPtr) -> (param: AnyPtr) -> (errmsg: Ptr String) -> Int
+  %foreign "C:sqlite3_close,sqlite3,sqlite3.h"
+  sqlite3_close : (sqlite3: AnyPtr) -> PrimIO Int
+
+  %foreign "C:sqlite3_exec,sqlite3,sqlite3.h"
+  sqlite3_exec : (sqlite3: AnyPtr) -> (sql: String) -> (callback: AnyPtr) -> (param: AnyPtr) -> (errmsg: Ptr String) -> PrimIO Int
   
-  mkSqlite : String -> IO SqlitePtr
+  %foreign "C:callback,zero"
+  callback : AnyPtr
+
+  public export
+  mkSqlite : String -> IO AnyPtr
   mkSqlite path = do
-    sqlite <- primIO $ allocVoidPtr ()
-    sqlite3_open "./db.sqlite3" sqlite
-    ?wasd
+    s <- primIO $ allocVoidPtr ()
+    _ <- primIO $ sqlite3_open path s
+    primIO $ deref s
+
+  public export
+  unmkSqlite : AnyPtr -> IO ()
+  unmkSqlite sqlite = do
+    _ <- primIO $ sqlite3_close sqlite
+    primIO $ free sqlite
+
+  public export
+  runQuery : AnyPtr -> String -> IO String
+  runQuery sqlite query = do
+  stringPtr <- primIO $ allocStringPtr ()
+  rc <- primIO $ sqlite3_exec sqlite query callback callback stringPtr
+  io_pure $ show rc
 
 namespace Web
   handleRequest : Either SocketError (Socket, SocketAddress) -> IO ()
@@ -58,4 +79,7 @@ namespace Web
         acceptLoop sock
 
 main : IO ()
-main = Web.mkServer 5000 "localhost"
+main = do
+  db <- Sqlite.mkSqlite "./db.sqlite3"
+  Sqlite.unmkSqlite db
+  -- Web.mkServer 5000 "localhost"
