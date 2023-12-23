@@ -19,8 +19,7 @@
         packages = { inherit zero runTests; };
 
         devShell = pkgs.mkShell {
-          buildInputs = [ (devEnv zero) ];
-          packages = [ pkgs.idris2-pkgs.lsp ];
+          buildInputs = [ (pkgs.idris2-pkgs._builders.devEnv zero) ];
         };
       }
     );

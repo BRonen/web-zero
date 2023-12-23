@@ -4,7 +4,11 @@ modules = Main
 main = Main
 
 depends = contrib
+        , network
 
 executable = zero
 
 sourcedir = "src"
+
+prebuild = "make -C src"
+postclean = "make -C src clean"

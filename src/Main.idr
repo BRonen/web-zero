@@ -1,72 +1,61 @@
 module Main
 
-data Fin : Nat -> Type where
-  FZ : Fin (S k)
-  FS : Fin k -> Fin (S k)
+import Network.Socket
+import Network.Socket.Data
 
-Show (Equal x y) where
-  show _ = "Equality"
+namespace Sqlite
+  data SqlitePtr = AnyPtr
 
-Show (Fin k) where
-  show (FS k) = "fS { " ++ show k ++ " }"
-  show _ = "fZ"
+  %foreign "C:allocVoidPtr,c_utils.h"
+  allocVoidPtr : () -> PrimIO (Ptr SqlitePtr)
 
-public export
-f' : Bool -> Type
-f' True = (Nat, Nat)
-f' False = Nat
+  %foreign "C:free,libc"
+  free : SqlitePtr -> PrimIO ()
 
-public export
-f : (t: Bool) -> Nat -> f' t
-f True x = (x, x * 2)
-f False x = x * 2
+  %foreign "C:sqlite3_open, sqlite3"
+  sqlite3_open : (filename: String) -> (sqlite3: Ptr SqlitePtr) -> Int
 
-g : (t : Nat) -> Fin (S t)
-g 0 = FZ
-g (S x) = FS $ g $ x
+  %foreign "C:sqlite3_close, sqlite3"
+  sqlite3_close : (sqlite3: SqlitePtr) -> Int
 
-mutual
-  even : Nat -> Bool
-  even Z = True
-  even (S k) = odd k
+  %foreign "C:sqlite3_exec, sqlite3"
+  sqlite3_exec : (sqlite3: SqlitePtr) -> (sql: String) -> (callback: AnyPtr) -> (param: AnyPtr) -> (errmsg: Ptr String) -> Int
+  
+  mkSqlite : String -> IO SqlitePtr
+  mkSqlite path = do
+    sqlite <- primIO $ allocVoidPtr ()
+    sqlite3_open "./db.sqlite3" sqlite
+    ?wasd
 
-  odd : Nat -> Bool
-  odd Z = False
-  odd (S k) = even k
+namespace Web
+  handleRequest : Either SocketError (Socket, SocketAddress) -> IO ()
+  handleRequest (Left sockErr) = printLn "hello world2"
+  handleRequest (Right (sock, sockAddr)) = do
+    let status = "500"
+    let status_text = "Ok"
+    _ <- send sock $ "HTTP/1.1 " ++ status ++ " " ++ status_text ++ "\r\nContent-Type: application/json\r\nContent-Length: 12\r\n\r\nhello world!\r\n"
+    printLn sockAddr
 
-addMaybe : (Maybe Nat) -> (Maybe Nat) -> (Maybe Nat)
-addMaybe x y = Just $ !x + !y
+  acceptLoop : Socket -> IO()
+  acceptLoop sock = do
+    handleRequest =<< accept sock
+    acceptLoop sock
 
-twoPlusTwo : 2 + 2 = 4
-twoPlusTwo = Refl
+  public export
+  mkServer : Int -> (host: String) -> IO ()
+  mkServer port host = do
+    tcpSock <- socket AF_INET Stream 0
 
--- !
-disjoint : (n : Nat) -> Equal Z (S n) -> Void
-disjoint n prf = replace {p = disjointTy} prf ()
-  where
-    disjointTy : Nat -> Type
-    disjointTy Z = ()
-    disjointTy (S k) = Void
+    case tcpSock of
+      Left sockErr => printLn $ show sockErr
+      Right sock => do
+        socketBound <- bind sock (Just $ Hostname host) port
+        printLn $ show socketBound
 
-plusReduces : (n: Nat) -> 0 + n = n
-plusReduces n = Refl
-
-plusReducesZ : (n: Nat) -> n + 0 = n
-plusReducesZ Z = Refl
-plusReducesZ (S k) = plusReducesZ (S k)
+        socketBound' <- listen sock
+        printLn $ show socketBound'
+        
+        acceptLoop sock
 
 main : IO ()
-main = do
-  putStrLn "hello world"
-  printLn $ f False 2
-  printLn $ g 0
-  printLn $ g 1
-  printLn $ g 2
-  printLn $ g 3
-  printLn $ g 4
-  printLn $ odd 1
-  printLn $ even 1
-  printLn $ addMaybe (Just 2) (Just 3)
-  printLn $ addMaybe (Just 2) (Nothing)
-  printLn $ twoPlusTwo
-  printLn $ plusReduces 2
+main = Web.mkServer 5000 "localhost"
