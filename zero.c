@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <sqlite3.h>
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
     int i;
@@ -10,13 +11,29 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
     return 0;
 }
 
-int** allocVoidPtr () {
+static int** allocVoidPtr () {
     int* valueRef = malloc( sizeof( int* ) );
     int** memRef = malloc( sizeof( int** ) );
     *memRef = valueRef;
     return memRef;
 }
 
-void* deref (void** ref) {
+static void* deref (void** ref) {
     return *ref;
+}
+
+void aaa () {
+    printf("hello world\n");
+    return;
+}
+
+int main () {
+    aaa();
+
+    sqlite3* db;
+
+    sqlite3_open("db.sqlite3", &db);
+
+    sqlite3_close(db);
+    return 0;
 }
