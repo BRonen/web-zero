@@ -1,8 +1,8 @@
-SRCS = ./libzero.h
-OBJS = $(SRCS:.h=.so)
+SRCS = zero.c
+OBJS = $(SRCS:.c=.so)
 
 build:
-	gcc --shared $(SRCS) -o $(OBJS) && mv *.so ../build/exec/zero_app
+	gcc -lsqlite3 -fpic -shared ./$(SRCS) -o lib$(OBJS) && mv *.so ../build/exec/zero_app
 
 clean :
 	rm -f *.so

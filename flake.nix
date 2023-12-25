@@ -19,7 +19,7 @@
         packages = { inherit zero runTests; };
 
         devShell = pkgs.mkShell {
-          buildInputs = [ (pkgs.idris2-pkgs._builders.devEnv zero) ];
+          buildInputs = [ (pkgs.idris2-pkgs._builders.devEnv zero) pkgs.sqlite ];
         };
       }
     );

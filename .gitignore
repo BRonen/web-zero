@@ -1,3 +1,6 @@
 .direnv/
+.vscode/
 build/
 result/
+misc/
+db.sqlite3

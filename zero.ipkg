@@ -10,5 +10,5 @@ executable = zero
 
 sourcedir = "src"
 
-postbuild = "make -C src"
+postbuild = "make -C src build"
 postclean = "make -C src clean"
