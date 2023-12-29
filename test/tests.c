@@ -24,5 +24,9 @@ int main() {
     sqlite_callback(&result, 0, &param, &param);
     dump_query_state(result);
 
+    char* a = get_column_string(0, *result);
+
+    printf("<<< %s >>>\n", a);
+
     return 0;
 }

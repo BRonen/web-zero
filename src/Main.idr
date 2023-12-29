@@ -5,17 +5,14 @@ import Network.Socket.Data
 import System.FFI
 
 namespace Sqlite
-  sqlite3_lib : String -> String
-  sqlite3_lib fn = "C:" ++ fn ++ ",libzero"
-
-  public export
-  SqlitePtr : Type
-  SqlitePtr = AnyPtr
-
   public export
   QueryResult : Type
   QueryResult = Struct "state_node" [("value", Ptr AnyPtr), ("next", Ptr QueryResult)]
 
+  sqlite3_lib : String -> String
+  sqlite3_lib fn = "C:" ++ fn ++ ",libzero"
+
+  public export
   %foreign (sqlite3_lib "sqlite3_libversion")
   sqlite3_libversion : PrimIO String
 
@@ -26,37 +23,41 @@ namespace Sqlite
     printLn $ "Sqlite version " ++ v
 
   %foreign (sqlite3_lib "create_sqlite_ref")
-  createSqliteRef : (path: String) -> PrimIO (Ptr SqlitePtr)
+  createSqliteRef : (path: String) -> PrimIO (Ptr AnyPtr)
 
   %foreign (sqlite3_lib "deref_sqlite")
-  derefSqlite : (sqliteRef: Ptr SqlitePtr) -> PrimIO SqlitePtr
+  derefSqlite : (sqliteRef: Ptr AnyPtr) -> PrimIO AnyPtr
+
+  %foreign (sqlite3_lib "deref")
+  derefQueryResult : Ptr QueryResult -> PrimIO QueryResult
 
   public export
-  mkSqlite : String -> IO SqlitePtr
+  mkSqlite : String -> IO AnyPtr
   mkSqlite path = do
     ref <- primIO $ createSqliteRef path
     db <- primIO $ derefSqlite ref
     io_pure db
 
   %foreign (sqlite3_lib "free_sqlite")
-  freeSqlite : (sqlite3: SqlitePtr) -> PrimIO Unit
+  freeSqlite : (sqlite3: AnyPtr) -> PrimIO Unit
 
   public export
-  unmkSqlite : (sqlite3: SqlitePtr) -> IO ()
+  unmkSqlite : (sqlite3: AnyPtr) -> IO ()
   unmkSqlite db = primIO $ freeSqlite db
 
   %foreign (sqlite3_lib "exec_query_sqlite")
-  execQuerySqlite : (sqlite3: SqlitePtr) -> String -> QueryResult
+  execQuerySqlite : (sqlite3: AnyPtr) -> String -> Ptr QueryResult
 
   public export
-  querySqlite : (sqlite3: SqlitePtr) -> String -> IO QueryResult
+  querySqlite : (sqlite3: AnyPtr) -> String -> IO QueryResult
   querySqlite db query = do
-    let result = execQuerySqlite db query
+    let resultRef = execQuerySqlite db query
+    result <- primIO $ derefQueryResult resultRef
     io_pure result
 
   public export
-  %foreign (sqlite3_lib "get_string")
-  getString : Ptr AnyPtr -> PrimIO String
+  %foreign (sqlite3_lib "get_column_string")
+  getColumn : Int -> QueryResult -> PrimIO String
 
 namespace Web
   handleRequest : Either SocketError (Socket, SocketAddress) -> IO ()
@@ -92,8 +93,8 @@ main : IO ()
 main = do
   Sqlite.sqliteVersion
   db <- Sqlite.mkSqlite "./db.sqlite3"
-  users <- Sqlite.querySqlite db "SELECT * FROM users WHERE id = 5;"
-  query_data <- primIO $ Sqlite.getString $ getField users "value"
+  users <- Sqlite.querySqlite db "SELECT * FROM users;"
+  query_data <- primIO $ Sqlite.getColumn 1 users
   printLn query_data
   Sqlite.unmkSqlite db
 

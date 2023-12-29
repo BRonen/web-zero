@@ -20,6 +20,11 @@ sqlite3 *deref_sqlite(sqlite3 **db)
     return *db;
 }
 
+void *deref(void **v)
+{
+    return *v;
+}
+
 void free_sqlite(sqlite3 *db)
 {
     sqlite3_close(db);
@@ -34,20 +39,30 @@ char *concat_strings(char *str1, char *str2)
     return str;
 }
 
-typedef struct state_node {
+typedef struct state_node
+{
     void **value;
     struct state_node *next;
 };
 
-void dump_query_state (struct state_node *resultRef)
+void dump_query_state(struct state_node *resultRef)
 {
-    if(resultRef == NULL) {
-        printf("\n<><><>\n");
+    if (resultRef == NULL)
+    {
+        printf("\n<><null><>\n\n");
         return;
     }
 
-    while (resultRef != NULL) {
-        printf("-> %x %x\n\n", resultRef, resultRef->next);
+    char **argv = resultRef->value;
+
+    while (resultRef != NULL)
+    {
+        printf(
+            "-> %p : %p :: %s : %s \n\n",
+            argv,
+            *argv,
+            *argv,
+            argv[1]);
         // printf("->> %s\n\n", iter->value[0]);
         // printf("->>> %s\n\n", concat_strings(iter->value[1], ""));
 
@@ -57,14 +72,32 @@ void dump_query_state (struct state_node *resultRef)
 
 int sqlite_callback(struct state_node **tRef, int argc, void **argv, char **azColName)
 {
-    struct state_node* t = *tRef;
-    struct state_node* result = malloc(sizeof(struct state_node));
-    result->value = argv;
+    printf("}}}}}} %d\n", argc);
+
+    // creates a result list on the heap
+    struct state_node *t = *tRef;
+    struct state_node *result = malloc(sizeof(struct state_node));
     result->next = NULL;
 
-    printf("=> %s %s %x %x\n\n", argv[0], argv[1], result, result->next);
-    
-    if(*tRef == NULL) {
+    void** value = malloc(sizeof(void *) * argc);
+
+    for (int i = 0; i < argc; i++)
+    {
+        printf("]]]]]] %s %s\n", (char *)*(argv + i), *(azColName + i));
+
+        // copies the value of the column to heap and puts on the result
+        char* u = malloc(sizeof(char) * strlen(argv[i]));
+        strcpy(u, argv[i]);
+        value[i] = u;
+
+    }
+
+    result->value = value;
+
+    printf("\n===> %s %s %p %p\n\n", (char *)*value, (char *)*(value + 1), result, result->next);
+
+    if (*tRef == NULL)
+    {
         *tRef = result;
         return 0;
     }
@@ -77,27 +110,27 @@ int sqlite_callback(struct state_node **tRef, int argc, void **argv, char **azCo
     return 0;
 }
 
-struct state_node exec_query_sqlite(sqlite3 *db, char *query)
+struct state_node *exec_query_sqlite(sqlite3 *db, char *query)
 {
     char *zErrMsg = 0;
 
-    struct state_node* result = NULL;
-
-    dump_query_state(result);
-    
-    {
-        int rc = sqlite3_exec(db, query, sqlite_callback, &result, &zErrMsg);
-        if (rc != SQLITE_OK)
-        {
-            fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        }
-    }
+    struct state_node *result = NULL;
 
     dump_query_state(result);
 
-    return *result;
+    int rc = sqlite3_exec(db, query, sqlite_callback, &result, &zErrMsg);
+    if (rc != SQLITE_OK)
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+
+    dump_query_state(result);
+
+    return result;
 }
 
-char* get_string(void** t){
-    return (char*) *t;
+char *get_column_string(int i, struct state_node v)
+{
+    dump_query_state(&v);
+    printf("\n%s <> %s <> %d\n", v.value[0], v.value[1], i);
+
+    return v.value[i];
 }
