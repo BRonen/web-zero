@@ -25,38 +25,75 @@ void free_sqlite(sqlite3 *db)
     sqlite3_close(db);
 }
 
-char* concat_strings (char* str1, char* str2) {
-    char* str = malloc(strlen(str1) + strlen(str2));
+char *concat_strings(char *str1, char *str2)
+{
+    char *str = malloc(strlen(str1) + strlen(str2));
 
     sprintf(str, "%s%s", str1, str2);
-    
+
     return str;
 }
 
-typedef struct query_state {
-    char* value;
-    struct query_state* next;
+typedef struct state_node {
+    void **value;
+    struct state_node *next;
 };
 
-int sqlite_callback(struct query_state *result, int argc, char **argv, char **azColName)
+void dump_query_state (struct state_node *resultRef)
 {
-    for (int i = 0; i < argc; i++)
-        result->value = concat_strings(argv[1], "");
+    if(resultRef == NULL) {
+        printf("\n<><><>\n");
+        return;
+    }
+
+    while (resultRef != NULL) {
+        printf("-> %x %x\n\n", resultRef, resultRef->next);
+        // printf("->> %s\n\n", iter->value[0]);
+        // printf("->>> %s\n\n", concat_strings(iter->value[1], ""));
+
+        resultRef = resultRef->next;
+    }
+}
+
+int sqlite_callback(struct state_node **tRef, int argc, void **argv, char **azColName)
+{
+    struct state_node* t = *tRef;
+    struct state_node* result = malloc(sizeof(struct state_node));
+    result->value = argv;
+    result->next = NULL;
+
+    printf("=> %s %s %x %x\n\n", argv[0], argv[1], result, result->next);
+    
+    if(*tRef == NULL) {
+        *tRef = result;
+        return 0;
+    }
+
+    while (t->next != NULL)
+        t = t->next;
+
+    t->next = result;
 
     return 0;
 }
 
-char* exec_query_sqlite(sqlite3 *db)
+char *exec_query_sqlite(sqlite3 *db, char *query)
 {
     char *zErrMsg = 0;
 
-    struct query_state result = { "", NULL };
+    struct state_node* result = NULL;
 
-    int rc = sqlite3_exec(db, "SELECT * FROM users;", sqlite_callback, &result, &zErrMsg);
-    if (rc != SQLITE_OK)
+    dump_query_state(result);
+    
     {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        int rc = sqlite3_exec(db, query, sqlite_callback, &result, &zErrMsg);
+        if (rc != SQLITE_OK)
+        {
+            fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        }
     }
 
-    return result.value;
+    dump_query_state(result);
+
+    return " ";
 }

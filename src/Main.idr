@@ -4,7 +4,10 @@ import Network.Socket
 import Network.Socket.Data
 
 namespace Sqlite
-  %foreign "C:sqlite3_libversion,libzero"
+  sqlite3_lib : String -> String
+  sqlite3_lib fn = "C:" ++ fn ++ ",libzero"
+
+  %foreign (sqlite3_lib "sqlite3_libversion")
   sqlite3_libversion : PrimIO String
 
   public export
@@ -13,10 +16,10 @@ namespace Sqlite
     v <- primIO sqlite3_libversion
     printLn $ "Sqlite version " ++ v
 
-  %foreign "C:create_sqlite_ref,libzero"
+  %foreign (sqlite3_lib "create_sqlite_ref")
   createSqliteRef : (path: String) -> PrimIO (Ptr AnyPtr)
 
-  %foreign "C:deref_sqlite,libzero"
+  %foreign (sqlite3_lib "deref_sqlite")
   derefSqlite : (sqliteRef: Ptr AnyPtr) -> PrimIO AnyPtr
 
   public export
@@ -26,20 +29,20 @@ namespace Sqlite
     db <- primIO $ derefSqlite ref
     io_pure db
 
-  %foreign "C:free_sqlite,libzero"
+  %foreign (sqlite3_lib "free_sqlite")
   freeSqlite : (sqlite3: AnyPtr) -> PrimIO Unit
 
   public export
-  unmkSqlite : AnyPtr -> IO ()
+  unmkSqlite : (sqlite3: AnyPtr) -> IO ()
   unmkSqlite db = primIO $ freeSqlite db
 
-  %foreign "C:exec_query_sqlite,libzero"
-  execQuerySqlite : (sqlite3: AnyPtr) -> PrimIO String
+  %foreign (sqlite3_lib "exec_query_sqlite")
+  execQuerySqlite : (sqlite3: AnyPtr) -> String -> PrimIO String
 
   public export
-  querySqlite : AnyPtr -> IO String
-  querySqlite db = do
-    result <- primIO $ execQuerySqlite db
+  querySqlite : (sqlite3: AnyPtr) -> String -> IO String
+  querySqlite db query = do
+    result <- primIO $ execQuerySqlite db query
     io_pure result
 
 namespace Web
@@ -76,7 +79,7 @@ main : IO ()
 main = do
   Sqlite.sqliteVersion
   db <- Sqlite.mkSqlite "./db.sqlite3"
-  users <- Sqlite.querySqlite db
+  users <- Sqlite.querySqlite db "SELECT * FROM users;"
   printLn users
   printLn "world"
   Sqlite.unmkSqlite db
