@@ -77,7 +77,7 @@ int sqlite_callback(struct state_node **tRef, int argc, void **argv, char **azCo
     return 0;
 }
 
-char *exec_query_sqlite(sqlite3 *db, char *query)
+struct state_node exec_query_sqlite(sqlite3 *db, char *query)
 {
     char *zErrMsg = 0;
 
@@ -95,5 +95,9 @@ char *exec_query_sqlite(sqlite3 *db, char *query)
 
     dump_query_state(result);
 
-    return " ";
+    return *result;
+}
+
+char* get_string(void** t){
+    return (char*) *t;
 }
