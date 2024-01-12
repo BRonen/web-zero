@@ -17,6 +17,10 @@ namespace Sqlite
   sqlite3_libversion : PrimIO String
 
   public export
+  %foreign (sqlite3_lib "dump_query_state")
+  dumpQueryState : Ptr QueryResult -> PrimIO Unit
+
+  public export
   sqliteVersion : IO ()
   sqliteVersion = do
     v <- primIO sqlite3_libversion
@@ -28,6 +32,7 @@ namespace Sqlite
   %foreign (sqlite3_lib "deref_sqlite")
   derefSqlite : (sqliteRef: Ptr AnyPtr) -> PrimIO AnyPtr
 
+  public export
   %foreign (sqlite3_lib "deref")
   derefQueryResult : Ptr QueryResult -> PrimIO QueryResult
 
@@ -58,6 +63,10 @@ namespace Sqlite
   public export
   %foreign (sqlite3_lib "get_column_string")
   getColumn : Int -> QueryResult -> PrimIO String
+
+  public export
+  %foreign (sqlite3_lib "get_next_row")
+  getNextRow : QueryResult -> PrimIO (Ptr QueryResult)
 
 namespace Web
   handleRequest : Either SocketError (Socket, SocketAddress) -> IO ()
@@ -93,9 +102,16 @@ main : IO ()
 main = do
   Sqlite.sqliteVersion
   db <- Sqlite.mkSqlite "./db.sqlite3"
-  users <- Sqlite.querySqlite db "SELECT * FROM users;"
-  query_data <- primIO $ Sqlite.getColumn 1 users
-  printLn query_data
+  user <- Sqlite.querySqlite db "SELECT * FROM users;"
+  query_data <- primIO $ Sqlite.getColumn 1 user
+  printLn "wasdwad"
+  userRef <- primIO $ Sqlite.getNextRow user
+  printLn "wasdwad"
+  primIO $ Sqlite.dumpQueryState userRef
+  printLn "wasdwad"
+  -- user <- primIO $ Sqlite.derefQueryResult userRef
+  -- query_data <- primIO $ Sqlite.getColumn 1 user
+  -- printLn query_data
   Sqlite.unmkSqlite db
 
   -- Web.mkServer 5000 "localhost"

@@ -53,12 +53,12 @@ void dump_query_state(struct state_node *resultRef)
         return;
     }
 
-    char **argv = resultRef->value;
-
     while (resultRef != NULL)
     {
+        char **argv = resultRef->value;
+
         printf(
-            "-> %p : %p :: %s : %s \n\n",
+            "<->> %p : %p :: %s : %s \n\n",
             argv,
             *argv,
             *argv,
@@ -79,17 +79,16 @@ int sqlite_callback(struct state_node **tRef, int argc, void **argv, char **azCo
     struct state_node *result = malloc(sizeof(struct state_node));
     result->next = NULL;
 
-    void** value = malloc(sizeof(void *) * argc);
+    void **value = malloc(sizeof(void *) * argc);
 
     for (int i = 0; i < argc; i++)
     {
         printf("]]]]]] %s %s\n", (char *)*(argv + i), *(azColName + i));
 
         // copies the value of the column to heap and puts on the result
-        char* u = malloc(sizeof(char) * strlen(argv[i]));
+        char *u = malloc(sizeof(char) * strlen(argv[i]));
         strcpy(u, argv[i]);
         value[i] = u;
-
     }
 
     result->value = value;
@@ -133,4 +132,15 @@ char *get_column_string(int i, struct state_node v)
     printf("\n%s <> %s <> %d\n", v.value[0], v.value[1], i);
 
     return v.value[i];
+}
+
+struct state_node *get_next_row(struct state_node v)
+{
+    printf("\n>>> %p <> %s\n", &v, v.value[1]);
+    printf("\n>>> %p\n", (&v)->next);
+    if(v.next == NULL) return NULL;
+    // dump_query_state(v.next);
+    // printf("\n>>> %s <> %s <> %d\n", v.next->value[0], v.next->value[1]);
+
+    return NULL;
 }
